@@ -31,7 +31,14 @@ void cmd_get_all(char *res, size_t size);
 void cmd_get_info(char *res, size_t size);
 void cmd_get_alert(char *res, size_t size);
 void cmd_get_status(char *res, size_t size);
+void cmd_get_config(char *res, size_t size);
+
 void cmd_start_alert(char *res, size_t size);
+void cmd_set_cpu_alert_limit(char *res, size_t size);
+void cmd_set_mem_alert_limit(char *res, size_t size);
+void cmd_set_cpu_temp_alert_limit(char *res, size_t size);
+void cmd_set_gpu_temp_alert_limit(char *res, size_t size);
+void cmd_set_storage_alert_limit(char *res, size_t size);
 
 // Command handler function
 void handle_command(const char *cmd, char *response, size_t size);

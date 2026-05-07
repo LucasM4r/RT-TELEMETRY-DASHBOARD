@@ -6,6 +6,7 @@
 
 #include "../include/monitor.h"
 #include "../include/info.h"
+#include "../include/config.h"
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -693,10 +694,10 @@ void *thread_alert_handler(void *arg)
         if (data.alert_enabled)
         {
             // Check if any of the critical conditions are met and update the alert_active status accordingly
-            bool cpu_critic = data.cpu_usage > 90.0;
-            bool ram_critic = data.mem_usage > 95.0;
-            bool temp_critic = data.cpu_temp > 85.0 || data.gpu_temp > 85.0;
-            bool disk_critic = data.storage_usage > 98.0;
+            bool cpu_critic = data.cpu_usage > config.cpu_usage_limit;
+            bool ram_critic = data.mem_usage > config.mem_usage_limit;
+            bool temp_critic = data.cpu_temp > config.cpu_temp_limit || data.gpu_temp > config.gpu_temp_limit;
+            bool disk_critic = data.storage_usage > config.storage_usage_limit;
 
             if (cpu_critic || ram_critic || temp_critic || disk_critic)
             {

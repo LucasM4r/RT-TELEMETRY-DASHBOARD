@@ -12,6 +12,7 @@
 #include "../include/monitor.h"
 #include "../include/network.h"
 #include "../include/info.h"
+#include "../include/config.h"
 
 #ifdef SO_REUSEPORT
 #define SOCKET_OPT_FLAGS (SO_REUSEADDR | SO_REUSEPORT)
@@ -123,7 +124,12 @@ void cmd_get_all(char *res, size_t size)
              "\"storage_read\": %.2f, "
              "\"storage_write\": %.2f, "
              "\"storage_usage\": %.2f, "
-             "\"storage_used\": %.2f"
+             "\"storage_used\": %.2f, "
+             "\"cpu_alert_limit\":%.2f, "
+             "\"mem_alert_limit\":%.2f, "
+             "\"cpu_temp_alert_limit\":%.2f, "
+             "\"gpu_temp_alert_limit\":%.2f, "
+             "\"storage_alert_limit\":%.2f "
              "}\n",
              data.cpu_usage,
              cores_buffer,
@@ -173,6 +179,57 @@ void cmd_get_info(char *res, size_t size)
              static_info.storage_total);
 }
 
+void cmd_get_config(char *res, size_t size)
+{
+    snprintf(res, size,
+             "{\"cpu_alert_limit\": %.2f, \"mem_alert_limit\": %.2f, \"cpu_temp_alert_limit\": %.2f, \"gpu_temp_alert_limit\": %.2f, \"storage_alert_limit\": %.2f}\n",
+             config.cpu_usage_limit,
+             config.mem_usage_limit,
+             config.cpu_temp_limit,
+             config.gpu_temp_limit,
+             config.storage_usage_limit);
+}
+
+// Function to set alert limits for CPU usage
+void cmd_set_cpu_alert_limit(char *res, size_t size)
+{
+    double limit = atof(res);
+    set_cpu_alert_limit(limit);
+    snprintf(res, size, "{\"cpu_alert_limit\": %.2f}\n", config.cpu_usage_limit);
+}
+
+// Function to set alert limits for memory usage
+void cmd_set_mem_alert_limit(char *res, size_t size)
+{
+    double limit = atof(res);
+    set_mem_alert_limit(limit);
+    snprintf(res, size, "{\"mem_alert_limit\": %.2f}\n", config.mem_usage_limit);
+}
+
+// Function to set alert limits for CPU temperature
+void cmd_set_cpu_temp_alert_limit(char *res, size_t size)
+{
+    double limit = atof(res);
+    set_cpu_temp_alert_limit(limit);
+    snprintf(res, size, "{\"cpu_temp_alert_limit\": %.2f}\n", config.cpu_temp_limit);
+}
+
+// Function to set alert limits for GPU temperature
+void cmd_set_gpu_temp_alert_limit(char *res, size_t size)
+{
+    double limit = atof(res);
+    set_gpu_temp_alert_limit(limit);
+    snprintf(res, size, "{\"gpu_temp_alert_limit\": %.2f}\n", config.gpu_temp_limit);
+}
+
+// Function to set alert limits for storage usage
+void cmd_set_storage_alert_limit(char *res, size_t size)
+{
+    double limit = atof(res);
+    set_storage_alert_limit(limit);
+    snprintf(res, size, "{\"storage_alert_limit\": %.2f}\n", config.storage_usage_limit);
+}
+
 // Command definitions mapping command strings to their handler functions
 Command commands[] = {
     {"GET_ALL", cmd_get_all},
@@ -183,18 +240,43 @@ Command commands[] = {
     {"GET_NETWORK", cmd_get_network},
     {"GET_STORAGE", cmd_get_storage},
     {"GET_ALERT", cmd_get_alert},
+    {"GET_CONFIG", cmd_get_config},
     {"STOP_ALERT", cmd_stop_alert},
     {"GET_STATUS", cmd_get_status},
     {"ENABLE_ALERT", cmd_start_alert},
-    {"GET_INFO", cmd_get_info}};
+    {"GET_INFO", cmd_get_info},
+    {"SET_CPU_ALERT_LIMIT", cmd_set_cpu_alert_limit},
+    {"SET_MEM_ALERT_LIMIT", cmd_set_mem_alert_limit},
+    {"SET_CPU_TEMP_ALERT_LIMIT", cmd_set_cpu_temp_alert_limit},
+    {"SET_GPU_TEMP_ALERT_LIMIT", cmd_set_gpu_temp_alert_limit},
+    {"SET_STORAGE_ALERT_LIMIT", cmd_set_storage_alert_limit}};
 
 int num_commands = sizeof(commands) / sizeof(commands[0]);
 
-// Function to handle incoming commands by looking them up in the commands array and calling the corresponding handler function, or returning an error if the command is unknown
 void handle_command(const char *cmd, char *response, size_t size)
 {
-    pthread_mutex_lock(&data_mutex);
+    // First check if the command has a value (for SET commands)
+    char cmd_copy[256];
+    strncpy(cmd_copy, cmd, sizeof(cmd_copy));
+    char *name = strtok(cmd_copy, ":");
+    char *val = strtok(NULL, ":");
 
+    if (val != NULL)
+    {
+        // If it's a SET command, find the corresponding handler and call it with the value
+        for (int i = 0; i < num_commands; i++)
+        {
+            if (strcmp(name, commands[i].name) == 0)
+            {
+                strncpy(response, val, size);
+                commands[i].func(response, size);
+                return;
+            }
+        }
+    }
+
+    // If it's not a SET command, find the corresponding handler and call it
+    pthread_mutex_lock(&data_mutex);
     for (int i = 0; i < num_commands; i++)
     {
         if (strcmp(cmd, commands[i].name) == 0)
@@ -204,10 +286,9 @@ void handle_command(const char *cmd, char *response, size_t size)
             return;
         }
     }
+    pthread_mutex_unlock(&data_mutex);
 
     snprintf(response, size, "{\"error\": \"unknown command\"}\n");
-
-    pthread_mutex_unlock(&data_mutex);
 }
 
 // Thread function for the network server that listens for incoming connections, reads commands, and sends back responses

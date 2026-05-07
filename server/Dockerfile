@@ -10,7 +10,7 @@ WORKDIR /app
 COPY include/ ./include/
 COPY src/ ./src/
 
-RUN gcc src/main.c src/monitor.c src/network.c src/info.c -o monitor_server -lpthread
+RUN gcc src/main.c src/monitor.c src/network.c src/info.c src/config.c -o monitor_server -lpthread
 
 FROM debian:bookworm-slim
 

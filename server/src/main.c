@@ -11,8 +11,11 @@
 #include "../include/monitor.h"
 #include "../include/network.h"
 #include "../include/info.h"
+#include "../include/config.h"
+
 // Global variables
 SystemData data;
+Config config;
 pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t alert_cond = PTHREAD_COND_INITIALIZER;
 SystemInfo static_info;
@@ -26,8 +29,38 @@ int main()
 {
     // Create threads for monitoring and network server
     pthread_t t_cpu, t_mem, t_gpu, t_alert, t_network, t_network_monitor, t_storage_monitor;
+
+    // Initialize shared data
     data.running = 1;
     data.cpu_usage = 0.0;
+    data.mem_usage = 0.0;
+    data.gpu_vram_usage = 0.0;
+    data.net_down = 0.0;
+    data.storage_temp = 0.0;
+    data.alert_active = 0;
+    data.alert_enabled = 1;
+    data.latency = 0;
+    data.mem_used = 0.0;
+    data.mem_cached = 0.0;
+    data.gpu_temp = 0.0;
+    data.gpu_vram_used = 0.0;
+    data.net_up = 0.0;
+    data.net_total_down = 0.0;
+    data.net_total_up = 0.0;
+    data.storage_used = 0.0;
+    data.storage_usage = 0.0;
+    data.storage_read = 0.0;
+    data.storage_write = 0.0;
+    data.storage_temp = 0.0;
+    data.cpu_freq = 0.0;
+
+    set_default_config();
+    for (int i = 0; i < MAX_CORES; i++)
+    {
+        data.cpu_cores[i] = 0.0;
+        data.last_idle_cores[i] = 0;
+        data.last_total_cores[i] = 0;
+    }
 
     static_info = init_system_info();
 
