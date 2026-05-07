@@ -1,0 +1,11 @@
+# C/C++
+*.o
+server/telemetry-server  # Nome do seu executável
+
+
+# IDEs
+.vscode/
+.idea/
+
+# Docker
+.data/
