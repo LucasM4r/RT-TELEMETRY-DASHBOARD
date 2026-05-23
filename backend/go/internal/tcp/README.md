@@ -10,6 +10,8 @@ TCP was chosen because it provides:
 - ordered transmission
 - connection-oriented communication
 
+[RFC 9293: STD 7: Transmission Control Protocol (TCP)](https://www.rfc-editor.org/info/rfc9293/)
+
 ## Connection Establishment (Three-Way Handshake)
 
 TCP connections are established using a three-way handshake.
