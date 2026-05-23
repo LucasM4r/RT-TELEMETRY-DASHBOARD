@@ -175,13 +175,11 @@ void get_cpu_temp(SystemData *data)
 // Function to read per-core CPU usage by comparing idle and total times for each core
 void get_cores_usage(SystemData *data)
 {
-    // The CPU cores idle and total times are read from /proc/stat
     FILE *fp = fopen("/proc/stat", "r");
     if (!fp)
         return;
 
     char line[256];
-
     if (!fgets(line, sizeof(line), fp))
     {
         fclose(fp);
@@ -189,44 +187,31 @@ void get_cores_usage(SystemData *data)
     }
 
     int i = 0;
-
-    // Read lines starting with "cpu" followed by a digit (cpu0, cpu1, etc.) to get per-core stats
     while (fgets(line, sizeof(line), fp) && i < MAX_CORES)
     {
-        // We want to skip the first line which is the aggregate "cpu" line and only process lines like "cpu0", "cpu1", etc.
         if (strncmp(line, "cpu", 3) != 0 || line[3] == ' ')
             break;
 
         long user, nice, system, idle, iowait, irq, softirq, steal;
-
-        // Parse the CPU times for this core and calculate usage based on the difference from the last read
         if (sscanf(line, "cpu%*d %ld %ld %ld %ld %ld %ld %ld %ld",
                    &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal) >= 8)
         {
+            // Calculate the current idle and total times for this core
             long current_idle = idle + iowait;
             long current_total = user + nice + system + idle + iowait + irq + softirq + steal;
 
+            // Calculate the difference in idle and total times since the last measurement
             long diff_idle = current_idle - data->last_idle_cores[i];
             long diff_total = current_total - data->last_total_cores[i];
 
-            if (diff_total > 0)
-            {
-                // Calculate the usage percentage for this core and store it in the SystemData structure
-                data->cpu_cores[i] = (double)(diff_total - diff_idle) / diff_total * 100.0;
-            }
-            else
-            {
-                data->cpu_cores[i] = 0.0;
-            }
+            // Calculate the CPU usage for this core and store it in the SystemData structure
+            data->cpu_cores[i] = diff_total > 0 ? (double)(diff_total - diff_idle) / diff_total * 100.0 : 0.0;
 
-            // Update the last idle and total times for this core for the next calculation
             data->last_idle_cores[i] = current_idle;
             data->last_total_cores[i] = current_total;
             i++;
         }
     }
-
-    // Store the number of cores we read
     data->num_cores = i;
     fclose(fp);
 }
@@ -573,39 +558,42 @@ void get_storage_metrics(SystemData *data)
 // Thread function to continuously monitor CPU metrics and update the shared SystemData structure with mutex protection
 void *thread_cpu_monitor(void *arg)
 {
-
     static SystemData temp;
+
     while (1)
     {
+        pthread_mutex_lock(&data_mutex);
+        memcpy(temp.last_idle_cores, data.last_idle_cores, sizeof(long) * MAX_CORES);
+        memcpy(temp.last_total_cores, data.last_total_cores, sizeof(long) * MAX_CORES);
+        pthread_mutex_unlock(&data_mutex);
 
         read_cpu_percent(&temp);
         get_cpu_freq(&temp);
         get_cpu_temp(&temp);
+        get_cores_usage(&temp);
+
         pthread_mutex_lock(&data_mutex);
         int running = data.running;
-        pthread_mutex_unlock(&data_mutex);
-
         if (!running)
+        {
+            pthread_mutex_unlock(&data_mutex);
             break;
-
-        pthread_mutex_lock(&data_mutex);
-
-        get_cores_usage(&data);
+        }
 
         data.cpu_usage = temp.cpu_usage;
         data.cpu_freq = temp.cpu_freq;
         data.cpu_temp = temp.cpu_temp;
+        data.num_cores = temp.num_cores;
 
-        if (data.cpu_usage > 90.0)
-        {
-            pthread_cond_signal(&alert_cond);
-        }
+        memcpy(data.cpu_cores, temp.cpu_cores, sizeof(temp.cpu_cores));
+        memcpy(data.last_idle_cores, temp.last_idle_cores, sizeof(long) * MAX_CORES);
+        memcpy(data.last_total_cores, temp.last_total_cores, sizeof(long) * MAX_CORES);
 
+        pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
         usleep(500000);
     }
-
     return NULL;
 }
 
@@ -654,25 +642,23 @@ void *thread_memory_monitor(void *arg)
     {
 
         read_memory_usage(&temp);
-        // Lock to check if we should keep running
+
         pthread_mutex_lock(&data_mutex);
         int running = data.running;
-        pthread_mutex_unlock(&data_mutex);
 
         if (!running)
+        {
+            pthread_mutex_unlock(&data_mutex);
             break;
+        }
 
-        pthread_mutex_lock(&data_mutex);
         data.mem_used = temp.mem_used;
         data.mem_cached = temp.mem_cached;
         data.mem_usage = temp.mem_usage;
-        if (data.mem_usage > 95.0)
-        {
-            pthread_cond_signal(&alert_cond);
-        }
+        pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
-        sleep(1);
+        usleep(500000);
     }
     return NULL;
 }
@@ -680,20 +666,20 @@ void *thread_memory_monitor(void *arg)
 // Thread to check alert conditions and update alert status
 void *thread_alert_handler(void *arg)
 {
+    pthread_mutex_lock(&data_mutex);
     while (1)
     {
-        pthread_mutex_lock(&data_mutex);
-        int running = data.running;
-        pthread_mutex_unlock(&data_mutex);
-
-        if (!running)
+        if (!data.running)
             break;
 
-        pthread_mutex_lock(&data_mutex);
+        // Aguarda de forma reativa sem fazer polling infinito de loop agressivo
+        pthread_cond_wait(&alert_cond, &data_mutex);
+
+        if (!data.running)
+            break;
 
         if (data.alert_enabled)
         {
-            // Check if any of the critical conditions are met and update the alert_active status accordingly
             bool cpu_critic = data.cpu_usage > config.cpu_usage_limit;
             bool ram_critic = data.mem_usage > config.mem_usage_limit;
             bool temp_critic = data.cpu_temp > config.cpu_temp_limit || data.gpu_temp > config.gpu_temp_limit;
@@ -704,6 +690,7 @@ void *thread_alert_handler(void *arg)
                 if (data.alert_active == 0)
                 {
                     printf("\n[!!!] SYSTEM IN CRITICAL STATE [!!!]\n");
+                    fflush(stdout);
                 }
                 data.alert_active = 1;
             }
@@ -716,13 +703,10 @@ void *thread_alert_handler(void *arg)
         {
             data.alert_active = 0;
         }
-
-        pthread_mutex_unlock(&data_mutex);
-        usleep(500000);
     }
+    pthread_mutex_unlock(&data_mutex);
     return NULL;
 }
-
 // Thread to get GPU metrics (temperature, VRAM usage)
 void *thread_gpu_monitor(void *arg)
 {
@@ -737,7 +721,9 @@ void *thread_gpu_monitor(void *arg)
         pthread_mutex_unlock(&data_mutex);
 
         if (!running)
+        {
             break;
+        }
 
         get_gpu_metrics(&temp);
 
@@ -747,13 +733,10 @@ void *thread_gpu_monitor(void *arg)
         data.gpu_vram_used = temp.gpu_vram_used;
         data.gpu_vram_usage = temp.gpu_vram_usage;
 
-        if (data.gpu_vram_usage > 90.0)
-        {
-            pthread_cond_signal(&alert_cond);
-        }
+        pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
-        sleep(1);
+        usleep(500000);
     }
     return NULL;
 }
@@ -772,7 +755,9 @@ void *thread_network_monitor(void *arg)
         pthread_mutex_unlock(&data_mutex);
 
         if (!running)
+        {
             break;
+        }
 
         get_network_metrics(&temp);
 
@@ -785,7 +770,7 @@ void *thread_network_monitor(void *arg)
         data.latency = temp.latency;
         pthread_mutex_unlock(&data_mutex);
 
-        sleep(1);
+        usleep(500000);
     }
 
     return NULL;
@@ -804,7 +789,9 @@ void *thread_storage_monitor(void *arg)
         pthread_mutex_unlock(&data_mutex);
 
         if (!running)
+        {
             break;
+        }
 
         get_storage_metrics(&temp);
 
@@ -815,9 +802,12 @@ void *thread_storage_monitor(void *arg)
         data.storage_temp = temp.storage_temp;
         data.storage_used = temp.storage_used;
         data.storage_usage = temp.storage_usage;
+
+        pthread_cond_signal(&alert_cond);
+
         pthread_mutex_unlock(&data_mutex);
 
-        sleep(1);
+        usleep(500000);
     }
     return NULL;
 }
