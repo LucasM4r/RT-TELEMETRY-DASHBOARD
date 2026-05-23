@@ -8,7 +8,7 @@ It exposes REST endpoints, handles HTTP requests, performs basic validation, and
 
 [RFC 9111: STD 98: HTTP Caching](https://www.rfc-editor.org/info/rfc9111/)
 
-[RFC 9114: HTTP/3](https://www.rfc-editor.org/info/rfc9114/)
+[RFC 9112: STD 99: HTTP/1.1](https://www.rfc-editor.org/info/rfc9112/)
 
 ---
 
