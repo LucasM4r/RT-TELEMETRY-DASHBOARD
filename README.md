@@ -29,7 +29,7 @@ graph TD
     end
 
     subgraph Backend [Backend Container]
-        Node[Node Middleware]
+        Go[Golang Middleware]
     end
 
     subgraph Client [Frontend Container]
@@ -38,9 +38,9 @@ graph TD
 
     %% Conexões Externas
     MonThreads -- "Parsing" --> Kernel
-    React -- "HTTP (API REST)" --> Node
-    Node -. "WebSocket" .-> React
-    Node <== "TCP Socket" ==> NetThread
+    React -- "HTTP (API REST)" --> Go
+    Go -. "WebSocket" .-> React
+    Go <== "TCP Socket" ==> NetThread
 
     %% Estilização de Contêineres
     style Hardware fill:#1a1a1a,stroke:#555,stroke-width:2px,color:#fff
@@ -48,7 +48,7 @@ graph TD
     style C_Server fill:#1a1a1a,stroke:#ff4444,stroke-width:2px,color:#fff
     style Mutex fill:#ff4444,color:#fff
     style Backend fill:#1a1a1a,stroke:#68a063,stroke-width:2px,color:#fff
-    style Node fill:#2d2d2d,stroke:#68a063,color:#fff
+    style Go fill:#2d2d2d,stroke:#68a063,color:#fff
     style Client fill:#1a1a1a,stroke:#00d8ff,stroke-width:2px,color:#fff
     style React fill:#2d2d2d,stroke:#00d8ff,color:#fff
 ```
