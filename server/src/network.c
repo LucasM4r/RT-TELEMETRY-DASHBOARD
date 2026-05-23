@@ -23,12 +23,13 @@
 // Helper function to build a JSON array of core usages for the GET_CPU_CORES command
 void build_cores_json(char *dest, size_t dest_size)
 {
+
     int offset = 0;
     offset += snprintf(dest + offset, dest_size - offset, "[");
 
     for (int i = 0; i < data.num_cores; i++)
     {
-        // Garante que ainda há espaço no buffer antes de escrever
+        // Prevent buffer overflow by ensuring we have enough space left in the destination buffer before appending each core usage value
         if (offset >= dest_size - 10)
             break;
 
@@ -38,70 +39,83 @@ void build_cores_json(char *dest, size_t dest_size)
     }
     snprintf(dest + offset, dest_size - offset, "]");
 }
-// Function to calculate CPU usage for each core by reading idle and total times from /proc/stat
 void cmd_get_cpu(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size, "{\"cpu\": %.2f, \"cpu_freq\": %.2f, \"cpu_temp\": %.2f}\n", data.cpu_usage, data.cpu_freq, data.cpu_temp);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to build a JSON array of core usages for the GET_CPU_CORES command
 void cmd_get_cpu_cores(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     int offset = snprintf(res, size, "{\"cores\": ");
 
     build_cores_json(res + offset, size - offset);
+    pthread_mutex_unlock(&data_mutex);
 
     offset = strlen(res);
     snprintf(res + offset, size - offset, "}\n");
 }
 
-// Function to read memory usage and return it in JSON format for the GET_MEM command
 void cmd_get_mem(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"mem_usage\": %.2f, \"mem_used\": %.2f, \"mem_cached\": %.2f}\n",
              data.mem_usage, data.mem_used, data.mem_cached);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to read GPU metrics and return them in JSON format for the GET_GPU command
 void cmd_get_gpu(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"gpu_temp\": %.2f, \"gpu_vram_used\": %.2f, \"gpu_vram_usage\": %.2f}\n",
              data.gpu_temp, data.gpu_vram_used, data.gpu_vram_usage);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to read network metrics and return them in JSON format for the GET_NETWORK command
 void cmd_get_network(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"net_down\": %.2f, \"net_up\": %.2f, \"net_total_down\": %.2f, \"net_total_up\": %.2f}\n",
              data.net_down, data.net_up, data.net_total_down, data.net_total_up);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to read storage metrics and return them in JSON format for the GET_STORAGE command
 void cmd_get_storage(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"storage_temp\": %.2f, \"storage_read\": %.2f, \"storage_write\": %.2f, \"storage_usage\": %.2f, \"storage_used\": %.2f}\n",
              data.storage_temp, data.storage_read, data.storage_write, data.storage_usage, data.storage_used);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to disable alerts and return the new alert status in JSON format for the STOP_ALERT command
 void cmd_stop_alert(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     data.alert_enabled = 0;
+    pthread_mutex_unlock(&data_mutex);
+
     snprintf(res, size, "{\"alert_enabled\": false}\n");
 }
 
-// Function to return all metrics in a single JSON object for the GET_ALL command
 void cmd_get_all(char *res, size_t size)
 {
-    // Build a JSON array of core usages to include in the response
     char cores_buffer[512];
+    pthread_mutex_lock(&data_mutex);
     build_cores_json(cores_buffer, sizeof(cores_buffer));
 
-    // Build the full JSON response with all metrics
     snprintf(res, size,
              "{"
              "\"cpu\": %.2f, "
@@ -139,34 +153,42 @@ void cmd_get_all(char *res, size_t size)
              data.net_down, data.net_up, data.net_total_down, data.net_total_up,
              data.storage_temp, data.storage_read, data.storage_write,
              data.storage_usage, data.storage_used);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to return the current alert status in JSON format for the GET_ALERT command
 void cmd_get_alert(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"alert\": %d}\n",
              data.alert_active);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to return a summary of key metrics and alert status in JSON format for the GET_STATUS command
 void cmd_get_status(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"cpu\": %.2f, \"mem_usage\": %.2f, \"mem_used\": %.2f, \"mem_cached\": %.2f, \"mem_usage\": %.2f, \"alert_active\": %d, \"alert_enabled\": %d}\n",
              data.cpu_usage, data.mem_usage, data.mem_used, data.mem_cached, data.mem_usage, data.alert_active, data.alert_enabled);
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to enable alerts and return the new alert status in JSON format for the ENABLE_ALERT command
 void cmd_start_alert(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     data.alert_enabled = 1;
     snprintf(res, size, "{\"status\": \"alert enabled\"}\n");
+    pthread_mutex_unlock(&data_mutex);
 }
 
-// Function to return static system information in JSON format for the GET_INFO command
 void cmd_get_info(char *res, size_t size)
 {
+
+    pthread_mutex_lock(&data_mutex);
     snprintf(res, size,
              "{\"cpu_model\": \"%s\", \"cpu_cores\": %d, \"cpu_threads\": %d, \"mem_total\": %.2f, \"gpu_model\": \"%s\", \"gpu_mem_total\": %.2f, \"storage_model\": \"%s\", \"storage_total\": %.2f}\n",
              static_info.cpu_model,
@@ -177,10 +199,12 @@ void cmd_get_info(char *res, size_t size)
              static_info.gpu_mem_total,
              static_info.storage_model,
              static_info.storage_total);
+    pthread_mutex_unlock(&data_mutex);
 }
 
 void cmd_get_config(char *res, size_t size)
 {
+
     snprintf(res, size,
              "{\"cpu_alert_limit\": %.2f, \"mem_alert_limit\": %.2f, \"cpu_temp_alert_limit\": %.2f, \"gpu_temp_alert_limit\": %.2f, \"storage_alert_limit\": %.2f}\n",
              config.cpu_usage_limit,
@@ -190,41 +214,41 @@ void cmd_get_config(char *res, size_t size)
              config.storage_usage_limit);
 }
 
-// Function to set alert limits for CPU usage
 void cmd_set_cpu_alert_limit(char *res, size_t size)
 {
+
     double limit = atof(res);
     set_cpu_alert_limit(limit);
     snprintf(res, size, "{\"cpu_alert_limit\": %.2f}\n", config.cpu_usage_limit);
 }
 
-// Function to set alert limits for memory usage
 void cmd_set_mem_alert_limit(char *res, size_t size)
 {
+
     double limit = atof(res);
     set_mem_alert_limit(limit);
     snprintf(res, size, "{\"mem_alert_limit\": %.2f}\n", config.mem_usage_limit);
 }
 
-// Function to set alert limits for CPU temperature
 void cmd_set_cpu_temp_alert_limit(char *res, size_t size)
 {
+
     double limit = atof(res);
     set_cpu_temp_alert_limit(limit);
     snprintf(res, size, "{\"cpu_temp_alert_limit\": %.2f}\n", config.cpu_temp_limit);
 }
 
-// Function to set alert limits for GPU temperature
 void cmd_set_gpu_temp_alert_limit(char *res, size_t size)
 {
+
     double limit = atof(res);
     set_gpu_temp_alert_limit(limit);
     snprintf(res, size, "{\"gpu_temp_alert_limit\": %.2f}\n", config.gpu_temp_limit);
 }
 
-// Function to set alert limits for storage usage
 void cmd_set_storage_alert_limit(char *res, size_t size)
 {
+
     double limit = atof(res);
     set_storage_alert_limit(limit);
     snprintf(res, size, "{\"storage_alert_limit\": %.2f}\n", config.storage_usage_limit);
@@ -253,47 +277,100 @@ Command commands[] = {
 
 int num_commands = sizeof(commands) / sizeof(commands[0]);
 
+// Function to handle incoming commands by looking them up in the command definitions and calling the appropriate handler function
 void handle_command(const char *cmd, char *response, size_t size)
 {
-    // First check if the command has a value (for SET commands)
+
     char cmd_copy[256];
-    strncpy(cmd_copy, cmd, sizeof(cmd_copy));
-    char *name = strtok(cmd_copy, ":");
-    char *val = strtok(NULL, ":");
+    strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
+    cmd_copy[sizeof(cmd_copy) - 1] = '\0';
 
-    if (val != NULL)
-    {
-        // If it's a SET command, find the corresponding handler and call it with the value
-        for (int i = 0; i < num_commands; i++)
-        {
-            if (strcmp(name, commands[i].name) == 0)
-            {
-                strncpy(response, val, size);
-                commands[i].func(response, size);
-                return;
-            }
-        }
-    }
+    // Split the command into name and value parts using ":" as a delimiter, where the name is the command string and the value is an optional parameter for SET commands
+    char *name = strtok_r(cmd_copy, ":");
+    char *val = strtok_r(NULL, ":");
 
-    // If it's not a SET command, find the corresponding handler and call it
-    pthread_mutex_lock(&data_mutex);
+    // Look up the command name in the command definitions and call the handler function
     for (int i = 0; i < num_commands; i++)
     {
-        if (strcmp(cmd, commands[i].name) == 0)
+        if (strcmp(name, commands[i].name) == 0)
         {
-            commands[i].func(response, size);
-            pthread_mutex_unlock(&data_mutex);
+            // SET command (has value)
+            if (val != NULL)
+            {
+                strncpy(response, val, size - 1);
+                response[size - 1] = '\0';
+                // Call the handler function for the SET command, passing the value as an argument
+                commands[i].func(response, size);
+            }
+            // GET command
+            else
+            {
+                // Call the handler function for the GET command, which will write the response directly to the provided response buffer
+                commands[i].func(response, size);
+            }
             return;
         }
     }
-    pthread_mutex_unlock(&data_mutex);
 
-    snprintf(response, size, "{\"error\": \"unknown command\"}\n");
+    snprintf(response, size, "{\"error\":\"unknown command\"}\n");
 }
 
-// Thread function for the network server that listens for incoming connections, reads commands, and sends back responses
+// Thread function for each client connection
+void *client_handler(void *arg)
+{
+
+    int new_socket = *(int *)arg;
+    free(arg);
+
+    while (1)
+    {
+        char recv_buffer[256];
+        char response[2048];
+
+        int bytes = read(new_socket, recv_buffer, sizeof(recv_buffer) - 1);
+
+        if (bytes <= 0)
+        {
+            break; // Connection closed or error
+        }
+
+        recv_buffer[bytes] = '\0';
+        recv_buffer[strcspn(recv_buffer, "\r\n")] = 0;
+
+        if (strcmp(recv_buffer, "STREAM") == 0)
+        {
+            // Streaming mode: send data continuously
+            while (1)
+            {
+                pthread_mutex_lock(&data_mutex);
+                int running = data.running;
+                pthread_mutex_unlock(&data_mutex);
+                if (!running)
+                    break;
+
+                handle_command("GET_ALL", response, sizeof(response));
+                if (send(new_socket, response, strlen(response), 0) <= 0)
+                {
+                    break; // Error on send (client disconnected)
+                }
+                usleep(500000); // 500ms polling rate (2Hz) for smoother real-time feel
+            }
+            break;
+        }
+
+        handle_command(recv_buffer, response, sizeof(response));
+        send(new_socket, response, strlen(response), 0);
+    }
+
+    close(new_socket);
+    return NULL;
+}
+
+// Thread function for the network server that listens for incoming connections,
+// reads commands, and sends back responses
 void *thread_network(void *arg)
 {
+
     // Set up a TCP server socket to listen for incoming connections on port 5000 and handle commands in a loop until the server is stopped
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -353,26 +430,13 @@ void *thread_network(void *arg)
             continue;
         }
 
-        // Read the command from the client, handle it, and send back the response
-        char recv_buffer[256];
-        char response[2048];
+        // Create a new thread to handle the client connection, allowing multiple clients to connect simultaneously without blocking the main server thread
+        int *client_sock = malloc(sizeof(int));
+        *client_sock = new_socket;
+        pthread_t client_thread;
 
-        int bytes = read(new_socket, recv_buffer, sizeof(recv_buffer) - 1);
-
-        if (bytes <= 0)
-        {
-            close(new_socket);
-            continue;
-        }
-
-        recv_buffer[bytes] = '\0';
-
-        recv_buffer[strcspn(recv_buffer, "\r\n")] = 0;
-        handle_command(recv_buffer, response, sizeof(response));
-
-        send(new_socket, response, strlen(response), 0);
-
-        close(new_socket);
+        pthread_create(&client_thread, NULL, client_handler, (void *)client_sock);
+        pthread_detach(client_thread);
     }
 
     close(server_fd);
