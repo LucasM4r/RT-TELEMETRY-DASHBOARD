@@ -22,7 +22,10 @@ SystemInfo static_info;
 
 void handle_sig(int sig)
 {
+    pthread_mutex_lock(&data_mutex);
     data.running = 0;
+    pthread_cond_broadcast(&alert_cond);
+    pthread_mutex_unlock(&data_mutex);
 }
 
 int main()
@@ -142,6 +145,10 @@ int main()
     pthread_join(t_alert, NULL);
     pthread_join(t_network_monitor, NULL);
     pthread_join(t_storage_monitor, NULL);
+
+    // Destroy mutex and condition variable
+    pthread_mutex_destroy(&data_mutex);
+    pthread_cond_destroy(&alert_cond);
 
     printf("\nTest completed.\n");
 
