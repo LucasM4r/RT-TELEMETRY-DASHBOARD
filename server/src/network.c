@@ -118,44 +118,26 @@ void cmd_get_all(char *res, size_t size)
 
     snprintf(res, size,
              "{"
-             "\"cpu\": %.2f, "
-             "\"cpu_cores\": %s, "
-             "\"cpu_freq\": %.2f, "
-             "\"cpu_temp\": %.2f, "
-             "\"mem_usage\": %.2f, "
-             "\"mem_used\": %.2f, "
-             "\"mem_cached\": %.2f, "
-             "\"alert_enabled\": %d, "
-             "\"alert_active\": %d, "
-             "\"gpu_temp\": %.2f, "
-             "\"gpu_vram_used\": %.2f, "
-             "\"gpu_vram_usage\": %.2f, "
-             "\"net_down\": %.2f, "
-             "\"net_up\": %.2f, "
-             "\"net_total_down\": %.2f, "
-             "\"net_total_up\": %.2f, "
-             "\"storage_temp\": %.2f, "
-             "\"storage_read\": %.2f, "
-             "\"storage_write\": %.2f, "
-             "\"storage_usage\": %.2f, "
-             "\"storage_used\": %.2f, "
-             "\"cpu_alert_limit\":%.2f, "
-             "\"mem_alert_limit\":%.2f, "
-             "\"cpu_temp_alert_limit\":%.2f, "
-             "\"gpu_temp_alert_limit\":%.2f, "
-             "\"storage_alert_limit\":%.2f "
+             "\"cpu\": %.2f, \"cpu_cores\": %s, \"cpu_freq\": %.2f, \"cpu_temp\": %.2f, "
+             "\"mem_usage\": %.2f, \"mem_used\": %.2f, \"mem_cached\": %.2f, "
+             "\"alert_enabled\": %d, \"alert_active\": %d, "
+             "\"gpu_temp\": %.2f, \"gpu_vram_used\": %.2f, \"gpu_vram_usage\": %.2f, "
+             "\"net_down\": %.2f, \"net_up\": %.2f, \"net_total_down\": %.2f, \"net_total_up\": %.2f, "
+             "\"storage_temp\": %.2f, \"storage_read\": %.2f, \"storage_write\": %.2f, "
+             "\"storage_usage\": %.2f, \"storage_used\": %.2f, "
+             "\"cpu_alert_limit\": %.2f, \"mem_alert_limit\": %.2f, \"cpu_temp_alert_limit\": %.2f, "
+             "\"gpu_temp_alert_limit\": %.2f, \"storage_alert_limit\": %.2f"
              "}\n",
-             data.cpu_usage,
-             cores_buffer,
-             data.cpu_freq, data.cpu_temp,
+             data.cpu_usage, cores_buffer, data.cpu_freq, data.cpu_temp,
              data.mem_usage, data.mem_used, data.mem_cached, data.alert_enabled, data.alert_active,
              data.gpu_temp, data.gpu_vram_used, data.gpu_vram_usage,
              data.net_down, data.net_up, data.net_total_down, data.net_total_up,
              data.storage_temp, data.storage_read, data.storage_write,
-             data.storage_usage, data.storage_used);
+             data.storage_usage, data.storage_used,
+             config.cpu_usage_limit, config.mem_usage_limit, config.cpu_temp_limit,
+             config.gpu_temp_limit, config.storage_usage_limit);
     pthread_mutex_unlock(&data_mutex);
 }
-
 void cmd_get_alert(char *res, size_t size)
 {
 
@@ -300,15 +282,13 @@ void handle_command(const char *cmd, char *response, size_t size)
             {
                 strncpy(response, val, size - 1);
                 response[size - 1] = '\0';
-                // Call the handler function for the SET command, passing the value as an argument
-                commands[i].func(response, size);
             }
             // GET command
             else
             {
-                // Call the handler function for the GET command, which will write the response directly to the provided response buffer
-                commands[i].func(response, size);
+                response[0] = '\0';
             }
+            commands[i].func(response, size);
             return;
         }
     }
