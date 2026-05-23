@@ -5,7 +5,9 @@ This package is responsible for the HTTP layer of the application.
 It exposes REST endpoints, handles HTTP requests, performs basic validation, and delegates all business logic and external communication to lower layers such as `bridge` and `tcp`.
 
 [RFC 9110: STD 97: HTTP Semantics](https://www.rfc-editor.org/info/rfc9110/)
+
 [RFC 9111: STD 98: HTTP Caching](https://www.rfc-editor.org/info/rfc9111/)
+
 [RFC 9114: HTTP/3](https://www.rfc-editor.org/info/rfc9114/)
 ---
 
