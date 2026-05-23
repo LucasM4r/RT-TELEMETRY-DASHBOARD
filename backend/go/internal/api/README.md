@@ -25,13 +25,14 @@ Each HTTP response contains:
 
 ---
 
+```mermaid
 sequenceDiagram
     participant Client
     participant API as HTTP API
 
     Client->>API: HTTP Request (GET /config)
     API-->>Client: HTTP Response (200 JSON)
-
+```
 ## Status Codes
 
 - 200 OK → Successful request
