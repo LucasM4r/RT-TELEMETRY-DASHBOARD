@@ -284,10 +284,11 @@ void handle_command(const char *cmd, char *response, size_t size)
     char cmd_copy[256];
     strncpy(cmd_copy, cmd, sizeof(cmd_copy) - 1);
     cmd_copy[sizeof(cmd_copy) - 1] = '\0';
+    char *saveptr;
 
     // Split the command into name and value parts using ":" as a delimiter, where the name is the command string and the value is an optional parameter for SET commands
-    char *name = strtok_r(cmd_copy, ":");
-    char *val = strtok_r(NULL, ":");
+    char *name = strtok_r(cmd_copy, ":", &saveptr);
+    char *val = strtok_r(NULL, ":", &saveptr);
 
     // Look up the command name in the command definitions and call the handler function
     for (int i = 0; i < num_commands; i++)
