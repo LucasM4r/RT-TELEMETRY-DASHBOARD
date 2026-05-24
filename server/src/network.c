@@ -247,7 +247,7 @@ Command commands[] = {
     {"GET_STORAGE", cmd_get_storage},
     {"GET_ALERT", cmd_get_alert},
     {"GET_CONFIG", cmd_get_config},
-    {"STOP_ALERT", cmd_stop_alert},
+    {"DISABLE_ALERT", cmd_stop_alert},
     {"GET_STATUS", cmd_get_status},
     {"ENABLE_ALERT", cmd_start_alert},
     {"GET_INFO", cmd_get_info},
