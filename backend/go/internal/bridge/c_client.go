@@ -1,8 +1,7 @@
 package bridge
 
 import (
-	"os"
-
+	"github.com/LucasM4r/rt-telemetry-backend/go/internal/config"
 	"github.com/LucasM4r/rt-telemetry-backend/go/internal/tcp"
 )
 
@@ -25,8 +24,8 @@ func NewCClient(host, port string) *CClient {
 }
 
 func NewCClientFromEnv() *CClient {
-	host := getEnv("C_SERVER_HOST", "localhost")
-	port := getEnv("C_SERVER_PORT", "5000")
+	host := config.GetEnv("C_SERVER_HOST", "localhost")
+	port := config.GetEnv("C_SERVER_PORT", "5000")
 	return NewCClient(host, port)
 }
 
@@ -39,11 +38,4 @@ func (c *CClient) Call(cmd string) ([]byte, error) {
 	defer client.Close()
 
 	return client.Fetch(cmd)
-}
-
-func getEnv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }
