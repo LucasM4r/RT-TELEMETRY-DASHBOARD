@@ -18,6 +18,8 @@ typedef struct
 
 extern Config config;
 
+static int is_valid_limit(double limit, double min, double max);
+
 // Function prototypes to set default configuration and update alert limits
 void set_default_config();
 
