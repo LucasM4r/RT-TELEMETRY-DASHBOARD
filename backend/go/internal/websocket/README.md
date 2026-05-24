@@ -25,7 +25,7 @@ WebSocket was chosen because it provides:
 ## Connection Establishment (HTTP Upgrade)
 
 WebSocket starts as a standard HTTP request and is upgraded to a persistent TCP connection.
-
+```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server
@@ -37,6 +37,7 @@ sequenceDiagram
 
     C->>S: WebSocket frames
     S->>C: WebSocket frames
+```
     
 ## Upgrade Handshake
 
