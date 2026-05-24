@@ -1,0 +1,45 @@
+services:
+  server:
+    build: ./server
+    container_name: telemetry-server
+    privileged: true
+    network_mode: "host"
+    pid: "host"
+    volumes:
+      - /proc:/proc:ro
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  backend:
+    build: ./backend
+    container_name: telemetry-backend
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - C_SERVER_HOST=server
+      - C_SERVER_PORT=5000
+    extra_hosts:
+      - "server:host-gateway"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  # Dashboard React (Vite + TS)
+  frontend:
+    build: ./frontend
+    container_name: telemetry-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
