@@ -1,0 +1,28 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/LucasM4r/rt-telemetry-backend/go/internal/bridge"
+)
+
+// PostAlert handles POST requests to activate and deactivate alerts
+func PostAlert(w http.ResponseWriter, r *http.Request) {
+	target := r.PathValue("target")
+
+	cmd, err := bridge.BuildActivateAlertCommand(target)
+
+	if err != nil {
+		http.Error(w, "Invalid target", http.StatusBadRequest)
+		return
+	}
+
+	data, err := bridge.Client().Call(cmd)
+
+	if err != nil {
+		http.Error(w, "Failed to reach C server", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, data)
+}

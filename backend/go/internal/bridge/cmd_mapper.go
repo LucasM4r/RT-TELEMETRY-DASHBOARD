@@ -18,3 +18,15 @@ func BuildSetLimitCommand(target string, value string) (string, error) {
 		return "", fmt.Errorf("invalid target")
 	}
 }
+
+func BuildActivateAlertCommand(target string) (string, error) {
+	switch target {
+	case "enable":
+		return "ENABLE_ALERT", nil
+	case "stop":
+		return "DISABLE_ALERT", nil
+	default:
+		return "", fmt.Errorf("invalid target")
+
+	}
+}
