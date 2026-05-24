@@ -1,5 +1,5 @@
 import type { SystemMetrics } from "./types";
-import { HISTORY_LENGTH } from "@/constants/metrics";
+import { HISTORY_LENGTH } from "@/config/api";
 
 const initHistory = () =>
     Array(HISTORY_LENGTH).fill(0);
