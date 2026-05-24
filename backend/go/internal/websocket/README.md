@@ -26,15 +26,18 @@ WebSocket was chosen because it provides:
 
 WebSocket starts as a standard HTTP request and is upgraded to a persistent TCP connection.
 
-```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server
 
-    C->>S: HTTP GET (Upgrade: websocket)
+    C->>S: HTTP Upgrade request
     S->>C: 101 Switching Protocols
-    C<->>S: Persistent WebSocket connection
-```
+
+    Note over C,S: Connection upgraded to WebSocket (TCP persistent)
+
+    C->>S: WebSocket frames
+    S->>C: WebSocket frames
+    
 ## Upgrade Handshake
 
 The server manually parses the HTTP request and generates the handshake response.
