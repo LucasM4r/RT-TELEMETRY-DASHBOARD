@@ -1,13 +1,17 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/LucasM4r/rt-telemetry-backend/go/internal/bridge"
 )
 
-// GetConfig handles GET requests to fetch the current configuration from the C server.
+type UpdateLimitRequest struct {
+	Value int `json:"value"`
+}
+
 func GetConfig(w http.ResponseWriter, r *http.Request) {
 	data, err := bridge.Client().Call("GET_CONFIG")
 	if err != nil {
@@ -18,17 +22,26 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, data)
 }
 
-// UpdateConfigLimit handles POST requests to update alert limits for various metrics.
 func UpdateConfigLimit(w http.ResponseWriter, r *http.Request) {
 	target := r.PathValue("target")
-	value := r.PathValue("value")
 
-	if valueInt, err := strconv.Atoi(value); err != nil || valueInt < 0 || valueInt > 100 {
-		http.Error(w, "Value must be an integer between 0 and 100", http.StatusBadRequest)
+	var body UpdateLimitRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
-	cmd, err := bridge.BuildSetLimitCommand(target, value)
+	if body.Value < 0 || body.Value > 100 {
+		http.Error(w, "Value must be between 0 and 100", http.StatusBadRequest)
+		return
+	}
+
+	cmd, err := bridge.BuildSetLimitCommand(
+		target,
+		strconv.Itoa(body.Value),
+	)
+
 	if err != nil {
 		http.Error(w, "Invalid target", http.StatusBadRequest)
 		return
