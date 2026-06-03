@@ -6,6 +6,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <pthread.h>
+
 typedef struct
 {
 
@@ -17,6 +19,7 @@ typedef struct
 } Config;
 
 extern Config config;
+extern pthread_mutex_t config_mutex;
 
 static int is_valid_limit(double limit, double min, double max);
 

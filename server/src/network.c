@@ -116,6 +116,7 @@ void cmd_get_all(char *res, size_t size)
     pthread_mutex_lock(&data_mutex);
     build_cores_json(cores_buffer, sizeof(cores_buffer));
 
+    pthread_mutex_lock(&config_mutex);
     snprintf(res, size,
              "{"
              "\"cpu\": %.2f, \"cpu_cores\": %s, \"cpu_freq\": %.2f, \"cpu_temp\": %.2f, "
@@ -136,6 +137,7 @@ void cmd_get_all(char *res, size_t size)
              data.storage_usage, data.storage_used,
              config.cpu_usage_limit, config.mem_usage_limit, config.cpu_temp_limit,
              config.gpu_temp_limit, config.storage_usage_limit);
+    pthread_mutex_unlock(&config_mutex);
     pthread_mutex_unlock(&data_mutex);
 }
 void cmd_get_alert(char *res, size_t size)

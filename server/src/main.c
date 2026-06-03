@@ -16,6 +16,7 @@
 // Global variables
 SystemData data;
 Config config;
+pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t alert_cond = PTHREAD_COND_INITIALIZER;
 SystemInfo static_info;
@@ -147,6 +148,7 @@ int main()
     pthread_join(t_storage_monitor, NULL);
 
     // Destroy mutex and condition variable
+    pthread_mutex_destroy(&config_mutex);
     pthread_mutex_destroy(&data_mutex);
     pthread_cond_destroy(&alert_cond);
 
