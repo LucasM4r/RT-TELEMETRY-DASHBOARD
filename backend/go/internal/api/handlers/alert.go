@@ -7,7 +7,7 @@ import (
 )
 
 // PostAlert handles POST requests to activate and deactivate alerts
-func PostAlert(w http.ResponseWriter, r *http.Request) {
+func (a *API) PostAlert(w http.ResponseWriter, r *http.Request) {
 	target := r.PathValue("target")
 
 	cmd, err := bridge.BuildActivateAlertCommand(target)
@@ -17,7 +17,7 @@ func PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := bridge.Client().Call(cmd)
+	data, err := a.BridgeClient.Call(cmd)
 
 	if err != nil {
 		http.Error(w, "Failed to reach C server", http.StatusInternalServerError)

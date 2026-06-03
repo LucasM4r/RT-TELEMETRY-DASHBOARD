@@ -59,7 +59,7 @@ func isPrivateIP(ipStr string) bool {
 }
 
 // GetWeather handles GET requests to fetch the current weather based on the client's IP location.
-func GetWeather(w http.ResponseWriter, r *http.Request) {
+func (a *API) GetWeather(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	ip := getIP(r)

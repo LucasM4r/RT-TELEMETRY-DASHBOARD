@@ -4,15 +4,16 @@ import (
 	"net/http"
 
 	"github.com/LucasM4r/rt-telemetry-backend/go/internal/api/routes"
+	"github.com/LucasM4r/rt-telemetry-backend/go/internal/bridge"
 )
 
 type Server struct {
 	mux *http.ServeMux
 }
 
-func NewServer() *Server {
+func NewServer(bridgeClient *bridge.CClient) *Server {
 	mux := http.NewServeMux()
-	routes.SetupRoutes(mux)
+	routes.SetupRoutes(mux, bridgeClient)
 	return &Server{
 		mux: mux,
 	}

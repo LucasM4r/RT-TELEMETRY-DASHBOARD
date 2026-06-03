@@ -18,25 +18,22 @@ func main() {
 	h := hub.NewHub()
 	go h.Run()
 
+	cClient := bridge.NewCClientFromEnv()
+
 	client := tcp.NewClient(
 		config.GetEnv("C_SERVER_HOST", "localhost"),
 		config.GetEnv("C_SERVER_PORT", "5000"),
+		func(c *tcp.Client) error {
+			return c.Send("STREAM")
+		},
 	)
 
-	if err := client.Connect(); err != nil {
-		log.Fatalf("TCP connect error: %v", err)
-	}
-	defer client.Close()
-
-	if err := client.Send("STREAM"); err != nil {
-		log.Fatalf("TCP send error: %v", err)
-	}
-
 	out := make(chan []byte, 256)
+	defer close(out)
 
 	go func() {
-		if err := client.Listen(out); err != nil {
-			log.Printf("TCP listen error: %v", err)
+		if err := client.Start(out, nil); err != nil {
+			log.Printf("[TCP][ERROR] Client stopped with error: %v", err)
 		}
 	}()
 
@@ -49,7 +46,7 @@ func main() {
 		log.Fatal(wsServer.ListenAndServe(":3000"))
 	}()
 
-	apiServer := api.NewServer()
+	apiServer := api.NewServer(cClient)
 
 	log.Println("[API] listening on :3001")
 	log.Fatal(http.ListenAndServe(":3001", middleware.Cors(apiServer.Router())))

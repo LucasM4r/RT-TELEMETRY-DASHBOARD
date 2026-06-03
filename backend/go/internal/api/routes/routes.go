@@ -4,15 +4,18 @@ import (
 	"net/http"
 
 	"github.com/LucasM4r/rt-telemetry-backend/go/internal/api/handlers"
+	"github.com/LucasM4r/rt-telemetry-backend/go/internal/bridge"
 )
 
-func SetupRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/health", handlers.Health)
-	mux.HandleFunc("/api/info", handlers.GetInfo)
-	mux.HandleFunc("/api/weather", handlers.GetWeather)
+func SetupRoutes(mux *http.ServeMux, bridgeClient *bridge.CClient) {
+	api := handlers.NewAPI(bridgeClient)
 
-	mux.HandleFunc("GET /api/config", handlers.GetConfig)
-	mux.HandleFunc("PATCH /api/config/{target}", handlers.UpdateConfigLimit)
+	mux.HandleFunc("/api/health", api.Health)
+	mux.HandleFunc("/api/info", api.GetInfo)
+	mux.HandleFunc("/api/weather", api.GetWeather)
 
-	mux.HandleFunc("POST /api/alert/{target}", handlers.PostAlert)
+	mux.HandleFunc("GET /api/config", api.GetConfig)
+	mux.HandleFunc("PATCH /api/config/{target}", api.UpdateConfigLimit)
+
+	mux.HandleFunc("POST /api/alert/{target}", api.PostAlert)
 }

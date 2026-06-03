@@ -5,7 +5,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"net"
+	"time"
 )
 
 var ErrNotConnected = errors.New("client is not connected")
@@ -16,13 +18,28 @@ type Client struct {
 	Port string
 
 	conn net.Conn
+
+	// Optional callback invoked after a successful connection.
+	OnConnect func(c *Client) error
+}
+
+type ReconnectConfig struct {
+	BaseDelay     time.Duration
+	MaxDelay      time.Duration
+	BackoffFactor float64
 }
 
 // NewClient creates a new TCP client instance.
-func NewClient(host, port string) *Client {
+func NewClient(host, port string, onConnect func(c *Client) error) *Client {
+
+	if onConnect == nil {
+		onConnect = func(c *Client) error { return nil }
+	}
+
 	return &Client{
-		Host: host,
-		Port: port,
+		Host:      host,
+		Port:      port,
+		OnConnect: onConnect,
 	}
 }
 
@@ -80,8 +97,6 @@ func (c *Client) Listen(out chan<- []byte) error {
 		return ErrNotConnected
 	}
 
-	defer close(out)
-
 	scanner := bufio.NewScanner(c.conn)
 
 	for scanner.Scan() {
@@ -114,4 +129,64 @@ func (c *Client) Fetch(cmd string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (c *Client) Start(out chan<- []byte, reconnectConfig *ReconnectConfig) error {
+	if reconnectConfig == nil {
+		reconnectConfig = DefaultReconnectConfig()
+	}
+
+	currentDelay := reconnectConfig.BaseDelay
+	for {
+
+		log.Println("[TCP][INFO] Attempting to connect")
+		if err := c.Connect(); err != nil {
+			log.Printf("[TCP][ERROR] Connection failed: %v", err)
+
+			time.Sleep(currentDelay)
+
+			newDelay := time.Duration(float64(currentDelay) * reconnectConfig.BackoffFactor)
+
+			currentDelay = newDelay
+			if currentDelay > reconnectConfig.MaxDelay {
+				currentDelay = reconnectConfig.MaxDelay
+			}
+
+			continue
+		}
+
+		currentDelay = reconnectConfig.BaseDelay
+
+		if c.OnConnect != nil {
+			if err := c.OnConnect(c); err != nil {
+				log.Printf("[TCP][ERROR] OnConnect callback failed: %v", err)
+				c.Close()
+				time.Sleep(currentDelay)
+				continue
+			}
+		}
+		log.Println("[TCP][INFO] Connected successfully")
+
+		if err := c.Listen(out); err != nil {
+			log.Printf("[TCP][ERROR] Listen error: %v", err)
+		}
+
+		c.Close()
+		log.Println("[TCP][INFO] Connection closed, retrying...")
+		time.Sleep(currentDelay)
+	}
+}
+
+func (r *ReconnectConfig) ApplyParameters(baseDelay, maxDelay time.Duration, backoffFactor float64) {
+	r.BaseDelay = baseDelay
+	r.MaxDelay = maxDelay
+	r.BackoffFactor = backoffFactor
+}
+
+func DefaultReconnectConfig() *ReconnectConfig {
+	return &ReconnectConfig{
+		BaseDelay:     1 * time.Second,
+		MaxDelay:      30 * time.Second,
+		BackoffFactor: 2.0,
+	}
 }

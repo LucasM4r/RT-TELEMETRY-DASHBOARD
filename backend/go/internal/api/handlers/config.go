@@ -12,8 +12,8 @@ type UpdateLimitRequest struct {
 	Value int `json:"value"`
 }
 
-func GetConfig(w http.ResponseWriter, r *http.Request) {
-	data, err := bridge.Client().Call("GET_CONFIG")
+func (a *API) GetConfig(w http.ResponseWriter, r *http.Request) {
+	data, err := a.BridgeClient.Call("GET_CONFIG")
 	if err != nil {
 		http.Error(w, "Failed to reach C server", http.StatusInternalServerError)
 		return
@@ -22,7 +22,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, data)
 }
 
-func UpdateConfigLimit(w http.ResponseWriter, r *http.Request) {
+func (a *API) UpdateConfigLimit(w http.ResponseWriter, r *http.Request) {
 	target := r.PathValue("target")
 
 	var body UpdateLimitRequest
@@ -47,7 +47,7 @@ func UpdateConfigLimit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := bridge.Client().Call(cmd)
+	data, err := a.BridgeClient.Call(cmd)
 	if err != nil {
 		http.Error(w, "Failed to reach C server", http.StatusInternalServerError)
 		return
