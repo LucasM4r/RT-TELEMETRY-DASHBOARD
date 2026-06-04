@@ -47,8 +47,8 @@ extern SystemData data;
 extern pthread_mutex_t data_mutex;
 extern pthread_cond_t alert_cond;
 
-// Helper function to locate the NVMe temperature sensor path
-void get_nvme_temp_path(char *path, size_t size);
+// Helper function to locate the storage temperature sensor path
+void get_storage_temp_path(char *path, size_t size);
 
 // Function prototypes
 void get_cpu_times(long *idle, long *total);

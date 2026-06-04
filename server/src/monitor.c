@@ -16,15 +16,15 @@
 #include <sys/time.h>
 #include <sys/statvfs.h>
 
-// Helper function to locate the NVMe temperature sensor path
-void get_nvme_temp_path(char *path, size_t size)
+// Helper function to locate the storage temperature sensor path
+void get_storage_temp_path(char *path, size_t size)
 {
     char name_path[64];
     char name_content[32];
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < MAX_THERMAL_ZONES; i++)
     {
-        // Check hwmon entries for NVMe devices
+        // Check hwmon entries for storage devices
         snprintf(name_path, sizeof(name_path),
                  "/sys/class/hwmon/hwmon%d/name", i);
 
@@ -38,8 +38,8 @@ void get_nvme_temp_path(char *path, size_t size)
         {
             name_content[strcspn(name_content, "\n")] = '\0';
 
-            // If the name contains "nvme", we assume this is the correct sensor
-            if (strstr(name_content, "nvme"))
+            // If the name contains "nvme" or "sata", we assume this is the correct sensor
+            if (strstr(name_content, "nvme") || strstr(name_content, "drivetemp"))
             {
                 snprintf(path, size,
                          "/sys/class/hwmon/hwmon%d/temp1_input", i);
@@ -51,7 +51,7 @@ void get_nvme_temp_path(char *path, size_t size)
 
         fclose(fp);
     }
-    // If we can't find a specific NVMe sensor, leave the path empty
+    // If we can't find a specific NVMe or SATA sensor, leave the path empty
     path[0] = '\0';
 }
 
@@ -430,7 +430,11 @@ void get_storage_io(SystemData *data)
     // Find the main storage device entry
     while (fgets(line, sizeof(line), fp))
     {
-        if (strstr(line, "nvme0n1 "))
+        if (strstr(line, "nvme0n1 ") ||
+            strstr(line, "sda ") ||
+            strstr(line, "vda ") ||
+            strstr(line, "xvda ") ||
+            strstr(line, "mmcblk0 "))
         {
             sscanf(line,
                    "%*u %*u %*s "
@@ -508,15 +512,15 @@ void get_storage_usage(SystemData *data)
     }
 }
 
-// Get NVMe storage temperature
+// Get storage temperature
 void get_storage_temp(SystemData *data)
 {
     static char temp_path[64] = "";
 
-    // Locate NVMe temperature sensor only once
+    // Locate storage temperature sensor only once
     if (temp_path[0] == '\0')
     {
-        get_nvme_temp_path(temp_path, sizeof(temp_path));
+        get_storage_temp_path(temp_path, sizeof(temp_path));
     }
 
     if (temp_path[0] == '\0')
