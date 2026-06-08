@@ -1,12 +1,12 @@
 # RT-TELEMETRY-DASHBOARD
 
-A distributed, event-driven real-time telemetry system designed for low-latency collection, processing, and visualization of hardware metrics using a custom C-based collector, a Go backend, and a WebSocket-driven React dashboard.
+A telemetry system for hardware metrics collection, processing, and visualization. Built with a C-based collector, a Go backend, and a React frontend.
 
 ---
 
 ## System Architecture
 
-The system separates data collection (C), processing (Go), and visualization (React) to optimize for performance, scalability, and fault isolation.
+The architecture is decoupled into three main layers: data collection, processing/routing, and visualization.
 
 ```mermaid
 ---
@@ -27,7 +27,7 @@ flowchart TB
   end
  subgraph C_Server["Server Container"]
     direction TB
-        NetThread["Network Thread"]
+        NetThread["Network Threads"]
         Mutex["Mutex"]
         MonThreads["Monitoring Threads"]
   end
@@ -56,33 +56,31 @@ flowchart TB
 ```
 
 ### Components
-1. **Server Container (C):** The C server collects kernel metrics via /proc and streams structured telemetry over TCP to the Go backend, which aggregates and broadcasts updates via WebSocket to the React client.
+1. **Server Container (C):** Collects hardware and OS metrics directly from /proc and /sys, transmitting structured data over a TCP socket.
+2. **Backend Container (Go):** Connects to the C server via TCP, manages the internal event hub, and exposes data to the client via WebSockets and a REST API.
 
-2. **Backend Container (Go):** Acts as the central nervous system. Connects via TCP to the C server, manages application state with an internal event Hub, and exposes WebSockets and a REST API to the client.
-
-3. **Frontend Container (React):** A responsive, slick dashboard UI that streams real-time data using WebSockets for instantaneous chart rendering.
+3. **Frontend Container (React):** Consumes the WebSocket streams to render telemetry charts in real time.
 
 ### Tech Stack
 
-- C (low-level metrics collector)
-- Go (backend middleware, WebSocket hub, REST API layer)
-- React (frontend)
-- WebSocket + TCP + API REST
-- Docker / Docker Compose
+- **Collector:** C
+- **Backend:** Go
+- **Frontend:** React
+- **Communication:** TCP, WebSocket, REST API
+- **Infrastructure:** Docke, Docker Compose
 
 ---
 
 ## Key Features
 
-- Real-time hardware telemetry (CPU, GPU, RAM, Disk, Network)
-- Low-latency streaming pipeline
-- Multi-container distributed architecture
-- WebSocket-based live dashboard updates
-- Kernel-level data collection via /proc and /sys
+- Hardware telemetry extraction (CPU, GPU, RAM, Disk, Network).
+- Kernel-level data parsing (/proc and /sys).
+- Asynchronous data pipeline using TCP and WebSockets.
+- Containerized environment for isolated deployment.
 
 ## User Interface
 
-The dashboard provides a comprehensive, single-page monitoring interface designed with a modern, high-contrast dark theme for optimal readability:
+The web interface provides a real-time overview of the monitored metrics:
 
 ![Interface](docs/interface.png)
 
@@ -94,7 +92,7 @@ The dashboard provides a comprehensive, single-page monitoring interface designe
 
 - Docker and Docker Compose installed.
 
-- Appropriate read permissions on the host system (so the monitoring container can parse /proc files accurately).
+- Read permissions on the host system to allow the monitoring container to parse /proc and /sys files..
 
 ### Installation & Run
 
