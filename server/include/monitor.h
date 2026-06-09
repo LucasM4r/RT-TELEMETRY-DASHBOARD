@@ -6,6 +6,8 @@
 #define MONITOR_H
 
 #include <pthread.h>
+#include <signal.h>
+#include <time.h>
 
 #define MAX_CORES 64
 #define MAX_THERMAL_ZONES 10
@@ -47,6 +49,21 @@ extern SystemData data;
 extern pthread_mutex_t data_mutex;
 extern pthread_cond_t alert_cond;
 
+// POSIX timer flags and timers
+extern volatile sig_atomic_t timer_cpu_percent_flag;
+extern volatile sig_atomic_t timer_cpu_monitor_flag;
+extern volatile sig_atomic_t timer_memory_monitor_flag;
+extern volatile sig_atomic_t timer_gpu_monitor_flag;
+extern volatile sig_atomic_t timer_network_monitor_flag;
+extern volatile sig_atomic_t timer_storage_monitor_flag;
+
+extern timer_t timer_cpu_percent;
+extern timer_t timer_cpu_monitor;
+extern timer_t timer_memory_monitor;
+extern timer_t timer_gpu_monitor;
+extern timer_t timer_network_monitor;
+extern timer_t timer_storage_monitor;
+
 // Helper function to locate the storage temperature sensor path
 void get_storage_temp_path(char *path, size_t size);
 
@@ -76,5 +93,19 @@ void get_storage_temp(SystemData *data);
 void get_storage_metrics(SystemData *data);
 
 void *thread_storage_monitor(void *arg);
+
+// POSIX timer signal handlers
+void handler_timer_cpu_percent(int sig, siginfo_t *si, void *uc);
+void handler_timer_cpu_monitor(int sig, siginfo_t *si, void *uc);
+void handler_timer_memory_monitor(int sig, siginfo_t *si, void *uc);
+void handler_timer_gpu_monitor(int sig, siginfo_t *si, void *uc);
+void handler_timer_network_monitor(int sig, siginfo_t *si, void *uc);
+void handler_timer_storage_monitor(int sig, siginfo_t *si, void *uc);
+
+// POSIX timer initialization functions
+int setup_timer(timer_t *timer_id, int signal_num, void (*handler)(int, siginfo_t *, void *));
+int start_timer(timer_t *timer_id, long interval_ms);
+int init_timers(void);
+int cleanup_timers(void);
 
 #endif

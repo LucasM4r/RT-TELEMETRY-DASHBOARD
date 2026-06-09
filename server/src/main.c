@@ -80,6 +80,13 @@ int main()
     printf("Initializing...\n");
     printf("Press Ctrl+C to stop.\n\n");
 
+    // Initialize POSIX timers
+    if (init_timers() == -1)
+    {
+        fprintf(stderr, "Failed to initialize timers\n");
+        return 1;
+    }
+
     // Create Threads
     if (pthread_create(&t_cpu, NULL, thread_cpu_monitor, NULL) != 0)
     {
@@ -151,6 +158,9 @@ int main()
     pthread_mutex_destroy(&config_mutex);
     pthread_mutex_destroy(&data_mutex);
     pthread_cond_destroy(&alert_cond);
+
+    // Cleanup POSIX timers
+    cleanup_timers();
 
     printf("\nTest completed.\n");
 
