@@ -18,14 +18,7 @@
 #include <time.h>
 #include <signal.h>
 
-// POSIX timer flags and timers - definitions
-volatile sig_atomic_t timer_cpu_percent_flag = 0;
-volatile sig_atomic_t timer_cpu_monitor_flag = 0;
-volatile sig_atomic_t timer_memory_monitor_flag = 0;
-volatile sig_atomic_t timer_gpu_monitor_flag = 0;
-volatile sig_atomic_t timer_network_monitor_flag = 0;
-volatile sig_atomic_t timer_storage_monitor_flag = 0;
-
+// POSIX timers - definitions
 timer_t timer_cpu_percent;
 timer_t timer_cpu_monitor;
 timer_t timer_memory_monitor;
@@ -33,54 +26,11 @@ timer_t timer_gpu_monitor;
 timer_t timer_network_monitor;
 timer_t timer_storage_monitor;
 
-// Signal handlers for POSIX timers
-void handler_timer_cpu_percent(int sig, siginfo_t *si, void *uc)
-{
-    timer_cpu_percent_flag = 1;
-}
-
-void handler_timer_cpu_monitor(int sig, siginfo_t *si, void *uc)
-{
-    timer_cpu_monitor_flag = 1;
-}
-
-void handler_timer_memory_monitor(int sig, siginfo_t *si, void *uc)
-{
-    timer_memory_monitor_flag = 1;
-}
-
-void handler_timer_gpu_monitor(int sig, siginfo_t *si, void *uc)
-{
-    timer_gpu_monitor_flag = 1;
-}
-
-void handler_timer_network_monitor(int sig, siginfo_t *si, void *uc)
-{
-    timer_network_monitor_flag = 1;
-}
-
-void handler_timer_storage_monitor(int sig, siginfo_t *si, void *uc)
-{
-    timer_storage_monitor_flag = 1;
-}
-
-// Function to create and setup a POSIX timer with specified interval
-int setup_timer(timer_t *timer_id, int signal_num, void (*handler)(int, siginfo_t *, void *))
+// Function to create and setup a POSIX timer
+int setup_timer(timer_t *timer_id, int signal_num)
 {
     struct sigevent se;
-    struct sigaction sa;
 
-    // Setup signal handler
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sa.sa_sigaction = handler;
-    if (sigaction(signal_num, &sa, NULL) == -1)
-    {
-        perror("sigaction");
-        return -1;
-    }
-
-    // Setup timer notification
     se.sigev_notify = SIGEV_SIGNAL;
     se.sigev_signo = signal_num;
     se.sigev_value.sival_ptr = timer_id;
@@ -93,7 +43,6 @@ int setup_timer(timer_t *timer_id, int signal_num, void (*handler)(int, siginfo_
 
     return 0;
 }
-
 // Function to start a timer with specified interval in milliseconds
 int start_timer(timer_t *timer_id, long interval_ms)
 {
@@ -185,16 +134,14 @@ void read_cpu_percent(SystemData *data)
 {
     // To calculate CPU usage, we read idle and total times at two intervals
     long idle1, total1, idle2, total2;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN);
 
     get_cpu_times(&idle1, &total1);
-
-    // Wait for timer signal (100ms)
-    timer_cpu_percent_flag = 0;
-    while (!timer_cpu_percent_flag)
-    {
-        pause();
-    }
-
+    sigwait(&wait_set, &sig);
     get_cpu_times(&idle2, &total2);
 
     // Calculate the difference in idle and total times
@@ -667,6 +614,11 @@ void get_storage_metrics(SystemData *data)
 void *thread_cpu_monitor(void *arg)
 {
     static SystemData temp;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN + 1);
 
     while (1)
     {
@@ -700,12 +652,7 @@ void *thread_cpu_monitor(void *arg)
         pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
-        // Wait for timer signal (500ms)
-        timer_cpu_monitor_flag = 0;
-        while (!timer_cpu_monitor_flag)
-        {
-            pause();
-        }
+        sigwait(&wait_set, &sig);
     }
     return NULL;
 }
@@ -750,6 +697,11 @@ void read_memory_usage(SystemData *data)
 void *thread_memory_monitor(void *arg)
 {
     static SystemData temp;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN + 2);
 
     while (1)
     {
@@ -771,12 +723,7 @@ void *thread_memory_monitor(void *arg)
         pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
-        // Wait for timer signal (500ms)
-        timer_memory_monitor_flag = 0;
-        while (!timer_memory_monitor_flag)
-        {
-            pause();
-        }
+        sigwait(&wait_set, &sig);
     }
     return NULL;
 }
@@ -828,8 +775,13 @@ void *thread_alert_handler(void *arg)
 // Thread to get GPU metrics (temperature, VRAM usage)
 void *thread_gpu_monitor(void *arg)
 {
-
     static SystemData temp;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN + 3);
+
     while (1)
     {
 
@@ -854,12 +806,7 @@ void *thread_gpu_monitor(void *arg)
         pthread_cond_signal(&alert_cond);
         pthread_mutex_unlock(&data_mutex);
 
-        // Wait for timer signal (500ms)
-        timer_gpu_monitor_flag = 0;
-        while (!timer_gpu_monitor_flag)
-        {
-            pause();
-        }
+        sigwait(&wait_set, &sig);
     }
     return NULL;
 }
@@ -868,6 +815,11 @@ void *thread_gpu_monitor(void *arg)
 void *thread_network_monitor(void *arg)
 {
     static SystemData temp;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN + 4);
 
     while (1)
     {
@@ -893,12 +845,7 @@ void *thread_network_monitor(void *arg)
         data.latency = temp.latency;
         pthread_mutex_unlock(&data_mutex);
 
-        // Wait for timer signal (500ms)
-        timer_network_monitor_flag = 0;
-        while (!timer_network_monitor_flag)
-        {
-            pause();
-        }
+        sigwait(&wait_set, &sig);
     }
 
     return NULL;
@@ -908,6 +855,11 @@ void *thread_network_monitor(void *arg)
 void *thread_storage_monitor(void *arg)
 {
     static SystemData temp;
+    int sig;
+    sigset_t wait_set;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGRTMIN + 5);
 
     while (1)
     {
@@ -932,23 +884,15 @@ void *thread_storage_monitor(void *arg)
         data.storage_usage = temp.storage_usage;
 
         pthread_cond_signal(&alert_cond);
-
         pthread_mutex_unlock(&data_mutex);
 
-        // Wait for timer signal (500ms)
-        timer_storage_monitor_flag = 0;
-        while (!timer_storage_monitor_flag)
-        {
-            pause();
-        }
+        sigwait(&wait_set, &sig);
     }
     return NULL;
 }
 
-// Initialize all POSIX timers
 int init_timers(void)
 {
-    // Use realtime signals starting from SIGRTMIN
     int sig_cpu_percent = SIGRTMIN;
     int sig_cpu_monitor = SIGRTMIN + 1;
     int sig_memory_monitor = SIGRTMIN + 2;
@@ -956,75 +900,67 @@ int init_timers(void)
     int sig_network_monitor = SIGRTMIN + 4;
     int sig_storage_monitor = SIGRTMIN + 5;
 
-    // Setup timers for each monitoring function
-    if (setup_timer(&timer_cpu_percent, sig_cpu_percent, handler_timer_cpu_percent) == -1)
+    sigset_t mask;
+    sigemptyset(&mask);
+
+    sigaddset(&mask, sig_cpu_percent);
+    sigaddset(&mask, sig_cpu_monitor);
+    sigaddset(&mask, sig_memory_monitor);
+    sigaddset(&mask, sig_gpu_monitor);
+    sigaddset(&mask, sig_network_monitor);
+    sigaddset(&mask, sig_storage_monitor);
+
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
     {
-        fprintf(stderr, "Failed to setup CPU percent timer\n");
+        perror("sigprocmask");
         return -1;
     }
 
-    if (setup_timer(&timer_cpu_monitor, sig_cpu_monitor, handler_timer_cpu_monitor) == -1)
-    {
-        fprintf(stderr, "Failed to setup CPU monitor timer\n");
+    if (setup_timer(&timer_cpu_percent, sig_cpu_percent) == -1)
         return -1;
-    }
-
-    if (setup_timer(&timer_memory_monitor, sig_memory_monitor, handler_timer_memory_monitor) == -1)
-    {
-        fprintf(stderr, "Failed to setup memory monitor timer\n");
+    if (setup_timer(&timer_cpu_monitor, sig_cpu_monitor) == -1)
         return -1;
-    }
-
-    if (setup_timer(&timer_gpu_monitor, sig_gpu_monitor, handler_timer_gpu_monitor) == -1)
-    {
-        fprintf(stderr, "Failed to setup GPU monitor timer\n");
+    if (setup_timer(&timer_memory_monitor, sig_memory_monitor) == -1)
         return -1;
-    }
-
-    if (setup_timer(&timer_network_monitor, sig_network_monitor, handler_timer_network_monitor) == -1)
-    {
-        fprintf(stderr, "Failed to setup network monitor timer\n");
+    if (setup_timer(&timer_gpu_monitor, sig_gpu_monitor) == -1)
         return -1;
-    }
-
-    if (setup_timer(&timer_storage_monitor, sig_storage_monitor, handler_timer_storage_monitor) == -1)
-    {
-        fprintf(stderr, "Failed to setup storage monitor timer\n");
+    if (setup_timer(&timer_network_monitor, sig_network_monitor) == -1)
         return -1;
-    }
+    if (setup_timer(&timer_storage_monitor, sig_storage_monitor) == -1)
+        return -1;
 
     // Start all timers
-    if (start_timer(&timer_cpu_percent, 100) == -1) // 100ms
+    if (start_timer(&timer_cpu_percent, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start CPU percent timer\n");
         return -1;
     }
 
-    if (start_timer(&timer_cpu_monitor, 100) == -1) // 100ms
+    if (start_timer(&timer_cpu_monitor, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start CPU monitor timer\n");
         return -1;
     }
 
-    if (start_timer(&timer_memory_monitor, 100) == -1) // 100ms
+    if (start_timer(&timer_memory_monitor, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start memory monitor timer\n");
         return -1;
     }
 
-    if (start_timer(&timer_gpu_monitor, 100) == -1) // 100ms
+    if (start_timer(&timer_gpu_monitor, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start GPU monitor timer\n");
         return -1;
     }
 
-    if (start_timer(&timer_network_monitor, 100) == -1) // 100ms
+    if (start_timer(&timer_network_monitor, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start network monitor timer\n");
         return -1;
     }
 
-    if (start_timer(&timer_storage_monitor, 100) == -1) // 100ms
+    if (start_timer(&timer_storage_monitor, 1000) == -1) // 1000ms
     {
         fprintf(stderr, "Failed to start storage monitor timer\n");
         return -1;

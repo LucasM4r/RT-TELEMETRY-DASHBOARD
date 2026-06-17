@@ -94,16 +94,8 @@ void get_storage_metrics(SystemData *data);
 
 void *thread_storage_monitor(void *arg);
 
-// POSIX timer signal handlers
-void handler_timer_cpu_percent(int sig, siginfo_t *si, void *uc);
-void handler_timer_cpu_monitor(int sig, siginfo_t *si, void *uc);
-void handler_timer_memory_monitor(int sig, siginfo_t *si, void *uc);
-void handler_timer_gpu_monitor(int sig, siginfo_t *si, void *uc);
-void handler_timer_network_monitor(int sig, siginfo_t *si, void *uc);
-void handler_timer_storage_monitor(int sig, siginfo_t *si, void *uc);
-
 // POSIX timer initialization functions
-int setup_timer(timer_t *timer_id, int signal_num, void (*handler)(int, siginfo_t *, void *));
+int setup_timer(timer_t *timer_id, int signal_num);
 int start_timer(timer_t *timer_id, long interval_ms);
 int init_timers(void);
 int cleanup_timers(void);
